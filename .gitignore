@@ -1,0 +1,259 @@
+package de.lenni.MsStats;
+
+import java.util.*;
+import java.util.Map.Entry;
+import java.lang.Integer;
+
+
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.scoreboard.DisplaySlot;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Score;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.ScoreboardManager;
+
+public class PvPEntityListener implements CommandExecutor, Listener {
+  MsStats plugin;
+	String killPath = "Stats.kills.players.";
+	String deathPath = "Stats.deaths.players.";
+    public static boolean ASC = true;
+    public static boolean DESC = false;
+    
+		public PvPEntityListener(MsStats plugin)
+		{
+			plugin.getServer().getPluginManager().registerEvents(this, plugin);
+			this.plugin = plugin;
+
+	    }
+
+	@Override
+	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String args[]) 
+	{
+		if((sender instanceof Player))
+		{
+			Player p = (Player)sender;
+			if(cmd.getName().equalsIgnoreCase("stats"))
+			{
+				if(args.length == 0)
+				{
+					int level = getLevel(killPath, p);
+					int level1 = getLevel(deathPath, p);
+					double kdr = 0;
+					if(level1 == 0){
+						kdr = level;
+					} else if(level ==  0){
+						kdr = 0.0D;
+					} else {
+						kdr = Math.round(level / level1 * 100.0D) / 100.0D;
+					}
+					p.sendMessage(ChatColor.DARK_AQUA + "[]=====[] " + ChatColor.GOLD + ChatColor.BOLD + " Stats " + ChatColor.DARK_AQUA + " []=====[]");
+					p.sendMessage(ChatColor.GOLD + "Name: " + ChatColor.DARK_AQUA + p.getName());
+					p.sendMessage(ChatColor.GOLD + "Kills: " + ChatColor.DARK_AQUA + level + ChatColor.DARK_AQUA + " | " + ChatColor.GOLD + "Tode: " + ChatColor.DARK_AQUA + level1 + ChatColor.DARK_AQUA + " | " + ChatColor.GOLD + "KD: " + ChatColor.DARK_AQUA + kdr);
+					p.sendMessage(ChatColor.DARK_AQUA + "[]=====================[]");
+					return true;
+				}
+			}
+			if(cmd.getName().equalsIgnoreCase("ranks"))
+			{
+				if(args.length == 0)
+				{
+					Map<String, Object> sortedList = sortByComparator(plugin.getConfig().getConfigurationSection("Stats.kills.players").getValues(false), DESC);
+					p.sendMessage(ChatColor.BLUE + "[]=====[] " + ChatColor.GOLD + ChatColor.BOLD + " TSCTopKills " + ChatColor.BLUE + " []=====[]");
+					Integer counter = 0;
+					for (@SuppressWarnings("rawtypes") Map.Entry entry : sortedList.entrySet())
+					{
+						counter++;
+					    p.sendMessage(ChatColor.AQUA + "#" + counter + ChatColor.DARK_AQUA + " | " + ChatColor.GOLD + entry.getKey().toString() + ChatColor.DARK_AQUA + " | " + ChatColor.GOLD + entry.getValue());
+					}
+					p.sendMessage(ChatColor.BLUE + "[]==========================[]");
+				}
+				return true;
+			}
+		return false;
+		}
+		return false;
+
+	}
+	@EventHandler
+	public void Join(PlayerJoinEvent e)
+	{
+		Player p = e.getPlayer();
+		int kills = getLevel(killPath, e.getPlayer());
+		int tode = getLevel(deathPath, e.getPlayer());
+		int spieler = Bukkit.getOnlinePlayers().length;
+		ScoreboardManager sbm = Bukkit.getScoreboardManager();
+		Scoreboard sb = sbm.getNewScoreboard();
+		sb.registerNewObjective("kills", "player");
+		Objective objekt = sb.getObjective("kills");
+		objekt.setDisplaySlot(DisplaySlot.SIDEBAR);
+		objekt.setDisplayName("§6§lTSC§b§lStats");
+		Score score= objekt.getScore(Bukkit.getOfflinePlayer(ChatColor.RED + "Spieler:"));
+		Score score1 = objekt.getScore(Bukkit.getOfflinePlayer(ChatColor.GOLD + "Kills:"));
+		Score score2= objekt.getScore(Bukkit.getOfflinePlayer(ChatColor.GOLD + "Tode:"));
+		score.setScore(spieler);
+		score1.setScore(kills);
+		score2.setScore(tode);
+		p.setScoreboard(sb);
+		for(Player players : Bukkit.getOnlinePlayers()){
+			score.setScore(spieler);
+			players.setScoreboard(sb);
+		}
+	}
+	@EventHandler
+	public void Left(PlayerQuitEvent e){
+		for(Player players : Bukkit.getOnlinePlayers()){
+			int kills = getLevel(killPath, e.getPlayer());
+			int tode = getLevel(deathPath, e.getPlayer());
+			int spieler = Bukkit.getOnlinePlayers().length;
+			ScoreboardManager sbm = Bukkit.getScoreboardManager();
+			Scoreboard sb = sbm.getNewScoreboard();
+			sb.registerNewObjective("kills", "player");
+			Objective objekt = sb.getObjective("kills");
+			objekt.setDisplaySlot(DisplaySlot.SIDEBAR);
+			objekt.setDisplayName("§6§lTSC§b§lStats");
+			Score score= objekt.getScore(Bukkit.getOfflinePlayer(ChatColor.RED + "Spieler:"));
+			Score score1 = objekt.getScore(Bukkit.getOfflinePlayer(ChatColor.GOLD + "Kills:"));
+			Score score2= objekt.getScore(Bukkit.getOfflinePlayer(ChatColor.GOLD + "Tode:"));
+			score.setScore(spieler);
+			score1.setScore(kills);
+			score2.setScore(tode);
+			players.setScoreboard(sb);
+			}
+		}
+
+	@EventHandler
+	public void onPlayerJoinEvent(PlayerJoinEvent e)
+	{
+		Player actualplayer = e.getPlayer();
+		Set<String> KeyList = null;
+		try
+		{
+    		ConfigurationSection ConSec = this.plugin.getConfig().getConfigurationSection("Stats.kills.players");
+    		KeyList = ConSec.getKeys(false);
+    		if(!KeyList.contains(actualplayer.getName()))
+    		{
+				addNewPlayer(killPath, actualplayer);
+				addNewPlayer(deathPath, actualplayer);
+    		}
+		}catch(Exception ex)
+		{
+			//Erstes Laden der Config.
+			addNewPlayer(killPath, actualplayer);
+			addNewPlayer(deathPath, actualplayer);
+		}
+	}
+
+	@EventHandler
+	public void onEntityDeath(EntityDeathEvent event)
+	{
+		Entity entity = event.getEntity();
+		if(entity instanceof Player){
+			//Spieler von Spieler oder Monster gekillt
+
+			Player victim = (Player) entity;
+			if(victim.getKiller() instanceof Player)
+			{
+				levelPlayerUp(deathPath, victim);
+				this.updateBoard(victim);
+				//Spieler von Spieler gekillt
+
+				Player actualplayer = ((Player) entity).getKiller();
+				if(!(actualplayer == null))
+				{
+					levelPlayerUp(killPath, actualplayer);
+					this.updateBoard(actualplayer);
+					//Der Spieler der ihn Gekillt hat
+				}
+			}
+		}
+	}
+
+	private int getLevel(String Path, Player actualplayer)
+	{
+		return plugin.getConfig().getInt(Path + actualplayer.getName());
+	}
+
+	private void addNewPlayer(String Path, Player actualplayer)
+	{
+		plugin.getConfig().set(Path + actualplayer.getName(), 0);
+		plugin.saveConfig();
+	}
+
+	private void levelPlayerUp(String Path, Player actualplayer)
+	{
+		int level = getLevel(Path, actualplayer);
+		level++;
+		plugin.getConfig().set(Path + actualplayer.getName(), level);
+		plugin.saveConfig();
+	}
+	private void updateBoard(Player p){
+		int kills = getLevel(killPath, p);
+		int tode = getLevel(deathPath, p);
+		int spieler = Bukkit.getOnlinePlayers().length;
+		ScoreboardManager sbm = Bukkit.getScoreboardManager();
+		Scoreboard sb = sbm.getNewScoreboard();
+		sb.registerNewObjective("kills", "player");
+		Objective objekt = sb.getObjective("kills");
+		objekt.setDisplaySlot(DisplaySlot.SIDEBAR);
+		objekt.setDisplayName("§6§lTSC§b§lStats");
+		Score score= objekt.getScore(Bukkit.getOfflinePlayer(ChatColor.RED + "Spieler:"));
+		Score score1 = objekt.getScore(Bukkit.getOfflinePlayer(ChatColor.GOLD + "Kills:"));
+		Score score2= objekt.getScore(Bukkit.getOfflinePlayer(ChatColor.GOLD + "Tode:"));
+		score.setScore(spieler);
+		score1.setScore(kills);
+		score2.setScore(tode);
+		p.setScoreboard(sb);
+		}
+	
+	private static Map<String, Object> sortByComparator(Map<String, Object> unsortMap, final boolean order)
+    {
+
+        List<Entry<String, Object>> list = new LinkedList<Entry<String, Object>>(unsortMap.entrySet());
+
+        Collections.sort(list, new Comparator<Entry<String, Object>>()
+        {
+            public int compare(Entry<String, Object> o1,
+                    Entry<String, Object> o2)
+            {
+            	Integer i1 = (Integer)o1.getValue();
+            	Integer i2 = (Integer)o2.getValue();
+                if (order)
+                {
+                    return i1.compareTo(i2);
+                }
+                else
+                {
+                    return i2.compareTo(i1);
+
+                }
+            }
+        });
+
+        Map<String, Object> sortedMap = new LinkedHashMap<String, Object>();
+        Integer Begrenzung = 0;
+        for (Entry<String, Object> entry : list)
+        {
+        	Begrenzung++;
+            sortedMap.put(entry.getKey(), entry.getValue());
+			if(Begrenzung == 10)
+			{
+				return sortedMap;
+			}
+        }
+
+        return sortedMap;
+    }
+
+}
